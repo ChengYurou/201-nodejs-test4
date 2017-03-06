@@ -1,16 +1,22 @@
-const Item = require('../model/item');
+const Cart = require('../model/cart');
 const async = require('async');
 const httpcode = require('../config/constant').httpcode;
 
 
-class ItemController {
+class CartController {
   getAll(req, res, next) {
     async.series({
-      items: (done) => {
-        Item.find({}, done);
+      carts: (done) => {
+        Cart.find({})
+            .populate('item')
+            .exec((err, docs) => {
+              const data = docs.items.toJSON.map(item => {
+                return Object.assign({}, item, {uir: `items/${item._id}`});
+              })
+            }, done);
       },
       totalCount: (done) => {
-        done(Item.count);
+        done(Cart.count);
       }
     }, (err, result) => {
       if (err) {
@@ -21,28 +27,33 @@ class ItemController {
   }
 
   getOne(req, res, next) {
-    Item.findById(req.params.itemId, (err, doc) => {
+    Cart.findById(req.params.cartId, (err, doc) => {
       if (err) {
         return next(err);
       }
       if (!doc) {
         return res.sendStatus(httpcode.NOT_FOUND);
       }
-      return res.status(httpcode.OK).send(doc);
+
+      const data = doc.toJSON.map(item => {
+        return Object.assign({}, item, {uir: `items/${item._id}`});
+      })
+
+      return res.status(httpcode.OK).send(data);
     })
   }
 
   create(req, res, next) {
-    Item.create(req.body, (err, doc) => {
+    Cart.create(req.body, (err, doc) => {
       if (err) {
         return next(err);
       }
-      return res.status(httpcode.CREATED).send({uri: `items/${doc._id}`});
+      return res.status(httpcode.CREATED).send({uri: `carts/${doc._id}`});
     })
   }
 
   delete(req, res, next) {
-    Item.findByIdAndRemove(req.params.itemId, (err, doc) => {
+    Cart.findByIdAndRemove(req.params.cartId, (err, doc) => {
       if (err) {
         return next(err);
       }
@@ -54,7 +65,7 @@ class ItemController {
   }
 
   update(req, res, next) {
-    Item.findByIdAndUpdate(req.params.itemId, req.body, (err, doc) => {
+    Cart.findByIdAndUpdate(req.params.cartId, req.body, (err, doc) => {
       if (err) {
         return next(err);
       }
@@ -66,4 +77,4 @@ class ItemController {
   }
 }
 
-module.exports = ItemController;
+module.exports = CartController;
